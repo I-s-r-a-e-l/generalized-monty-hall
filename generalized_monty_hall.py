@@ -6,6 +6,7 @@ import numpy as np
 
 
 def monty_hall_simulation(num_trials, n_doors, switch):
+  
     """
     Simulate the generalized Monty Hall problem over a number of trials.
 
@@ -42,7 +43,8 @@ def monty_hall_simulation(num_trials, n_doors, switch):
         if final_choice == car_location:
             wins += 1
 
-    return wins / num_trials
+    win_rate = wins / num_trials
+    return wins, win_rate
 
 def run_simulations_for_n_doors(n_values, num_trials):
 
@@ -56,19 +58,28 @@ def run_simulations_for_n_doors(n_values, num_trials):
     Returns:
         tuple: Two lists of win rates for no-switch and switch strategies.
     """
-    
+
     no_switch_win_rates = []
     switch_win_rates = []
+    no_switch_errors = []
+    switch_errors = []
 
     for n in n_values:
-        no_switch = monty_hall_simulation(num_trials=num_trials, n_doors=n, switch=False)
-        switch = monty_hall_simulation(num_trials=num_trials, n_doors=n, switch=True)
-        no_switch_win_rates.append(no_switch)
-        switch_win_rates.append(switch)
+        no_switch_wins, no_switch_rate = monty_hall_simulation(num_trials, n, switch=False)
+        switch_wins, switch_rate = monty_hall_simulation(num_trials, n, switch=True)
 
-    return no_switch_win_rates, switch_win_rates
+        # Confidence intervals
+        no_switch_se = np.sqrt(no_switch_rate * (1 - no_switch_rate) / num_trials)
+        switch_se = np.sqrt(switch_rate * (1 - switch_rate) / num_trials)
 
-def plot_generalized_results(n_values, no_switch_win_rates, switch_win_rates):
+        no_switch_win_rates.append(no_switch_rate)
+        switch_win_rates.append(switch_rate)
+        no_switch_errors.append(1.96 * no_switch_se)
+        switch_errors.append(1.96 * switch_se)
+
+    return no_switch_win_rates, switch_win_rates, no_switch_errors, switch_errors
+
+def plot_generalized_results(n_values, no_switch_win_rates, switch_win_rates, no_switch_errors, switch_errors):
 
     """
     Plot simulation results for the generalized Monty Hall problem.
@@ -80,10 +91,13 @@ def plot_generalized_results(n_values, no_switch_win_rates, switch_win_rates):
     """
 
     plt.figure(figsize=(10, 6))
-    plt.plot(n_values, no_switch_win_rates, label='No Switch Strategy', marker='o')
-    plt.plot(n_values, switch_win_rates, label='Switch Strategy', marker='o')
+
+    plt.errorbar(n_values, no_switch_win_rates, yerr=no_switch_errors, fmt='o-', capsize=5, label='No Switch Strategy')
+    plt.errorbar(n_values, switch_win_rates, yerr=switch_errors, fmt='o-', capsize=5, label='Switch Strategy')
+    
     plt.plot(n_values, [1/n for n in n_values], '--', color='blue', label='Theoretical No Switch (1/n)')
     plt.plot(n_values, [(n-1)/n for n in n_values], '--', color='orange', label='Theoretical Switch ((n-1)/n)')
+
     plt.xlabel('Number of Doors (n)')
     plt.ylabel('Winning Probability')
     plt.title('Generalized Monty Hall Problem (n Doors)')
@@ -95,5 +109,7 @@ def plot_generalized_results(n_values, no_switch_win_rates, switch_win_rates):
 
 if __name__ == "__main__":
     n_values = [3, 5, 10, 25, 50, 100]
-    no_switch_win_rates, switch_win_rates = run_simulations_for_n_doors(n_values, num_trials=10000)
-    plot_generalized_results(n_values, no_switch_win_rates, switch_win_rates)
+    num_trials = 10000
+
+    no_switch_rates, switch_rates, no_switch_errs, switch_errs = run_simulations_for_n_doors(n_values, num_trials)
+    plot_generalized_results(n_values, no_switch_rates, switch_rates, no_switch_errs, switch_errs)
